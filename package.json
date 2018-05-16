@@ -1,0 +1,36 @@
+{
+  "name": "SNS_backend",
+  "version": "1.0.0",
+  "description": "Social Networking Service",
+  "main": "index.js",
+  "repository": "https://github.com/DevMonsterCho/SNS_backend.git",
+  "author": "DevMonster <dmcho84@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "cross-env": "^5.1.4",
+    "dotenv": "^5.0.1",
+    "eslint": "^4.19.1",
+    "global": "^4.3.2",
+    "ioredis": "^3.2.2",
+    "keygrip": "^1.0.2",
+    "koa": "^2.5.0",
+    "koa-body": "^2.5.0",
+    "koa-bodyparser": "^4.2.0",
+    "koa-cookie": "^1.0.0",
+    "koa-generic-session": "^2.0.1",
+    "koa-passport": "^4.0.1",
+    "koa-redis": "^3.1.2",
+    "koa-router": "^7.4.0",
+    "koa-session": "^5.8.1",
+    "mongoose": "^5.0.14",
+    "redis": "^2.8.0"
+  },
+  "scripts": {
+    "start": "NODE_PATH=src node src",
+    "start:dev": "NODE_PATH=src nodemon --watch src/ src/index.js",
+    "deploy": "pm2 start deploy.config.json"
+  },
+  "devDependencies": {
+    "prettier-eslint": "^8.8.1"
+  }
+}

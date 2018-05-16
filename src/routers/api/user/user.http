@@ -1,0 +1,33 @@
+### GET ### auth check
+GET http://localhost:4000/api/user/check HTTP/1.1
+# x-access-session: zE/jwWaeOS6pVs+lQYuMZ10Fg7ofLTLlRuRp3ChmsAEZWW1JvZbbq/fIfhLWFCWFomTM3I+43AcbMMr8uC0CSg==
+
+### GET ### user list
+GET http://localhost:4000/api/user/list HTTP/1.1
+
+
+### GET ### user list
+GET http://localhost:4000/api/user/5afbe8288397b87259025fa7 HTTP/1.1
+
+
+### POST ### login dmcho84@gmail.com
+POST http://localhost:4000/api/user/login HTTP/1.1
+content-type: application/json
+
+{
+    "email": "dmcho84@gmail.com",
+    "password": "12345",
+    "time": "Sat, 14 Apr 2018 09:29:08 GMT"
+}
+
+### POST ### join junishop@gmail.com
+POST http://localhost:4000/api/user/join HTTP/1.1
+content-type: application/json
+
+{
+    "name": "devmonster",
+    "email": "devmonster@gmail.com",
+    "password": "12345",
+    "grade": 999,
+    "time": "Sat, 14 Apr 2018 09:29:08 GMT"
+}
