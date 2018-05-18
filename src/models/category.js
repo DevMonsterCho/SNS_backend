@@ -1,10 +1,11 @@
 const mongoose = require("mongoose");
+const categoryForm = require("./category.form");
 
 const { Schema } = mongoose;
 
-const Friends = new Schema({
+const Owner = new Schema({
   _id: {
-    type: String,
+    type: Schema.Types.ObjectId,
     required: true
   },
   name: {
@@ -24,36 +25,48 @@ const Friends = new Schema({
   }
 });
 
-const User = new Schema({
-  name: {
-    type: String,
+const Group = new Schema({
+  _id: {
+    type: Schema.Types.ObjectId,
     required: true
   },
-  nickname: {
+  title: {
     type: String,
-    trim: true,
-    unique: true,
     required: true
-  },
-  email: {
+  }
+});
+
+const Category = new Schema({
+  owner: Owner,
+  key: {
+    // menu path
     type: String,
     lowercase: true,
     trim: true,
-    unique: true,
     required: true
   },
-  password: {
+  category: {
+    // menu name
     type: String,
     trim: true,
     required: true
   },
-  grade: {
-    type: Number,
-    default: 1
+  type: {
+    type: String,
+    enum: categoryForm.type.enum,
+    required: true
   },
-  friends: [Friends],
-  message: {
-    type: String
+  read: Group,
+  write: Group,
+  sequence: {
+    type: Number,
+    min: 0,
+    max: 10,
+    default: 0
+  },
+  private: {
+    type: Boolean,
+    default: false
   },
   createDate: {
     type: Date,
@@ -65,4 +78,4 @@ const User = new Schema({
   }
 });
 
-module.exports = mongoose.model("User", User);
+module.exports = mongoose.model("Category", Category);

@@ -2,9 +2,9 @@ const mongoose = require("mongoose");
 
 const { Schema } = mongoose;
 
-const Friends = new Schema({
+const Owner = new Schema({
   _id: {
-    type: String,
+    type: Schema.Types.ObjectId,
     required: true
   },
   name: {
@@ -24,7 +24,11 @@ const Friends = new Schema({
   }
 });
 
-const User = new Schema({
+const Member = new Schema({
+  _id: {
+    type: Schema.Types.ObjectId,
+    required: true
+  },
   name: {
     type: String,
     required: true
@@ -32,28 +36,27 @@ const User = new Schema({
   nickname: {
     type: String,
     trim: true,
-    unique: true,
     required: true
   },
   email: {
     type: String,
     lowercase: true,
     trim: true,
-    unique: true,
     required: true
-  },
-  password: {
+  }
+});
+
+const Group = new Schema({
+  owner: Owner,
+  title: {
     type: String,
     trim: true,
     required: true
   },
-  grade: {
-    type: Number,
-    default: 1
-  },
-  friends: [Friends],
-  message: {
-    type: String
+  members: [Member],
+  private: {
+    type: Boolean,
+    default: false
   },
   createDate: {
     type: Date,
@@ -65,4 +68,4 @@ const User = new Schema({
   }
 });
 
-module.exports = mongoose.model("User", User);
+module.exports = mongoose.model("Group", Group);

@@ -25,9 +25,10 @@ POST http://localhost:4000/api/user/join HTTP/1.1
 content-type: application/json
 
 {
-    "name": "devmonster",
-    "email": "devmonster@gmail.com",
+    "email": "zxcv@gmail.com",
+    "name": "zxcv",
+    "nickname": "zxcv",
     "password": "12345",
-    "grade": 999,
+    "grade": 1,
     "time": "Sat, 14 Apr 2018 09:29:08 GMT"
 }

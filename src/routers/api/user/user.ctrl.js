@@ -32,40 +32,48 @@ const createSession = (ctx, data) => {
 };
 
 exports.join = async ctx => {
-  const { name, email, password, grade } = ctx.request.body;
+  const {
+    name,
+    email,
+    password,
+    grade,
+    nickname,
+    message = null
+  } = ctx.request.body;
+
   let passkey = cryptoPbkdf2Sync(password);
 
-  const user = await User.findOne({ email }).exec();
-  if (user) {
-    ctx.status = 400;
-    return (ctx.body = { message: `이미 사용중인 이메일 입니다.` });
-  } else {
-    const user = new User({
-      name,
-      email,
-      grade,
-      password: passkey
+  const user = new User({
+    name,
+    email,
+    grade,
+    nickname,
+    message,
+    password: passkey
+  });
+  try {
+    console.log(user);
+    await user.save();
+    let data = {
+      _id: user._id,
+      email: user.email,
+      name: user.name,
+      nickname: user.nickname,
+      message: user.message,
+      grade: user.grade,
+      friends: user.friends
+    };
+    let sess = createSession(ctx, data);
+    ctx.cookies.set("x-access-session", sess);
+    delete data._id;
+    return (ctx.body = {
+      sess,
+      user: data
     });
-    try {
-      console.log(user);
-      await user.save();
-      let data = {
-        email: user.email,
-        name: user.name,
-        grade: user.grade
-      };
-      let sess = createSession(ctx, data);
-      ctx.cookies.set("x-access-session", sess);
-      return (ctx.body = {
-        sess,
-        user: data
-      });
-      ctx.body = user;
-    } catch (e) {
-      ctx.status = 500;
-      ctx.body = { message: `계정 생성에 문제가 발생하였습니다.` };
-      ctx.throw(e, 500, "계정 생성에 문제가 발생하였습니다.");
-    }
+  } catch (e) {
+    ctx.status = 500;
+    ctx.body = { error: { message: `계정 생성에 문제가 발생하였습니다.` } };
+    ctx.throw(e, 500, "계정 생성에 문제가 발생하였습니다.");
   }
 };
 
@@ -74,22 +82,32 @@ exports.login = async ctx => {
   const { email, password } = ctx.request.body;
   if (!email || !password) ctx.status = 400;
   if (!email)
-    return (ctx.body = { message: `이메일을 입력하지 않으셨습니다.` });
+    return (ctx.body = {
+      error: { message: `이메일을 입력하지 않으셨습니다.` }
+    });
   if (!password)
-    return (ctx.body = { message: `비밀번호를 입력하지 않으셨습니다.` });
+    return (ctx.body = {
+      error: { message: `비밀번호를 입력하지 않으셨습니다.` }
+    });
   let passkey = cryptoPbkdf2Sync(password);
 
   try {
     const user = await User.findOne({ email }).exec();
     if (passkey === user.password) {
       let data = {
+        _id: user._id,
         email: user.email,
         name: user.name,
-        grade: user.grade
+        nickname: user.nickname,
+        message: user.message,
+        grade: user.grade,
+        friends: user.friends
       };
       let sess = createSession(ctx, data);
       console.log(`sess ::: `, sess);
       ctx.cookies.set("x-access-session", sess);
+
+      delete data._id;
       return (ctx.body = {
         sess,
         user: data
@@ -97,79 +115,115 @@ exports.login = async ctx => {
     } else {
       ctx.status = 401;
       return (ctx.body = {
-        message: `이메일 또는 비밀번호가 일치하지 않습니다.`
+        error: { message: `이메일 또는 비밀번호가 일치하지 않습니다.` }
       });
     }
   } catch (e) {
     ctx.status = 400;
-    return (ctx.body = { message: `존재하지 않는 이메일 입니다.` });
+    return (ctx.body = { error: { message: `존재하지 않는 이메일 입니다.` } });
   }
 };
 
 exports.modify = async ctx => {
-  const body = ctx.request.body;
-  const sess = ctx.user;
-
-  if (
-    !body.name ||
-    !body.email ||
-    !body.beforePassword ||
-    !body.afterPassword ||
-    body.email !== sess.emil
-  )
+  const {
+    name,
+    email,
+    password,
+    newpassword = null,
+    grade,
+    nickname,
+    message = null
+  } = ctx.request.body;
+  const { id } = ctx.params;
+  const loginUser = ctx.user;
+  const findUserForId = await User.findById(id).exec();
+  if (loginUser.grade !== 999 && loginUser.email !== findUserForId.email) {
     ctx.status = 400;
-  if (sess.email !== body.email)
-    return (ctx.body = "로그인 정보와 일치하지 않습니다.");
-  if (!body.name) return (ctx.body = `이름을 입력하지 않으셨습니다.`);
-  if (!body.email) return (ctx.body = `이메일을 입력하지 않으셨습니다.`);
-  if (!body.beforePassword)
-    return (ctx.body = `기존 비밀번호를 입력하지 않으셨습니다.`);
-  if (!body.afterPassword)
-    return (ctx.body = `새로운 비밀번호를 입력하지 않으셨습니다.`);
-
-  let passkey = cryptoPbkdf2Sync(body.beforePassword);
-
-  try {
-    let matchUser = await User.find({
-      email: body.email,
-      password: passkey
-    })[0].exec();
-    console.log(matchUser);
-  } catch (e) {
+    return (ctx.body = {
+      error: {
+        message: `해당 아이디로 로그인 후 이용해주세요.`
+      }
+    });
+  }
+  if (!findUserForId) {
     ctx.status = 400;
-    return (ctx.body = "해당 유저를 찾을 수 없습니다.");
+    return (ctx.body = {
+      error: {
+        message: `존재하지 않는 유저입니다.`
+      }
+    });
   }
 
-  let data = {
-    name: ctx.request.body.name,
-    email: ctx.request.body.email,
-    password: passkey
-  };
+  if (findUserForId.email !== email) {
+    console.log(findUserForId.email);
+    console.log(email);
+    ctx.status = 400;
+    return (ctx.body = {
+      error: {
+        message: `이메일 정보가 일치하지 않습니다.`
+      }
+    });
+  }
 
-  try {
-    const user = await User.findOneAndUpdate(
-      { email: body.email, password: passkey },
-      data,
-      { new: true }
-    ).exec();
-    if (passkey === user.password) {
-      let data = {
+  let passkey = cryptoPbkdf2Sync(password);
+  console.log(passkey);
+  if (findUserForId.password !== passkey) {
+    ctx.status = 400;
+    return (ctx.body = {
+      error: {
+        message: `비밀번호가 일치하지 않습니다.`
+      }
+    });
+  }
+
+  if (newpassword) passkey = cryptoPbkdf2Sync(newpassword);
+
+  console.log(`wwwwwww`);
+  console.log(findUserForId);
+  let data = {};
+  if (findUserForId.name !== name) data.name = name;
+  if (findUserForId.grade !== grade && ctx.user.grade === 999)
+    data.grade = grade;
+  if (findUserForId.nickname !== nickname) data.nickname = nickname;
+  if (findUserForId.message !== message) data.message = message;
+  if (newpassword) data.password = passkey;
+  console.log(data);
+
+  if (Object.keys(data).length > 0) {
+    data.modifyDate = new Date();
+    try {
+      const user = await User.findByIdAndUpdate(
+        id,
+        { $set: data },
+        { new: true }
+      ).exec();
+      console.log(user);
+
+      let result = {
+        _id: user._id,
         email: user.email,
-        name: user.name
+        name: user.name,
+        nickname: user.nickname,
+        message: user.message,
+        grade: user.grade,
+        friends: user.friends
       };
-      let sess = (ctx.session = await data);
-      console.log(`sess ::::: `, sess);
+      let sess = createSession(ctx, result);
+      ctx.cookies.set("x-access-session", sess);
+
+      delete result._id;
       return (ctx.body = {
         sess,
-        user: data
+        user: result
       });
+    } catch (e) {
+      ctx.throw(e, 500);
     }
-    ctx.status = 401;
-    if (user) {
-      return (ctx.body = `이메일 또는 비밀번호가 일치하지 않습니다.`);
-    }
-  } catch (e) {
-    ctx.throw(e, 500);
+  } else {
+    ctx.status = 200;
+    return (ctx.body = {
+      message: `변경사항이 없습니다.`
+    });
   }
 };
 
@@ -182,7 +236,7 @@ exports.logout = async ctx => {
     ctx.cookies.set("x-access-session", null);
   }
   ctx.body = {
-    message: "logout 되었습니다."
+    message: "logout."
   };
 };
 
@@ -195,10 +249,23 @@ exports.check = ctx => {
 
 exports.info = async ctx => {
   const { id } = ctx.params;
+  const { email } = ctx.user;
+
   try {
     const user = await User.findById(id).exec();
+    let resUserData = {
+      email: user.email,
+      name: user.name,
+      nickname: user.nickname,
+      message: user.message,
+      friends: user.friends
+    };
+
+    if (user.email === email) {
+      resUserData.grade = user.grade;
+    }
     ctx.body = {
-      user
+      user: resUserData
     };
   } catch (e) {
     ctx.throw(e, 500);
@@ -224,12 +291,12 @@ exports.remove = async ctx => {
     if (findUser.email === ctx.user.email) {
       await User.findByIdAndRemove(id).exec();
       ctx.body = {
-        message: "삭제되었습니다."
+        message: "삭제 처리가 완료 되었습니다."
       };
     } else {
       ctx.status = 401;
       ctx.body = {
-        message: "권한이 없습니다."
+        error: { message: "권한이 없습니다." }
       };
     }
   } catch (e) {

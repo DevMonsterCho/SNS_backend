@@ -54,6 +54,7 @@ app.use(
 );
 
 app.use(async (ctx, next) => {
+  ctx.middle = {};
   ctx.root = path.join(__dirname, "../");
   ctx.src = path.join(__dirname);
   let agent = ctx.request.header["user-agent"];
