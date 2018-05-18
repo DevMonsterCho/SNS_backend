@@ -13,7 +13,7 @@ user.get("/:id", userMiddle.checkObjectId, userCtrl.info);
 user.post("/friend", userMiddle.checkAuth, userFriendCtrl.addFriendForEmail);
 user.post("/login", userCtrl.login);
 user.post("/logout", userMiddle.checkAuth, userCtrl.logout);
-user.post("/join", userMiddle.checkUserAlreadyExists, userCtrl.join);
+user.post("/add", userMiddle.checkUserAlreadyExists, userCtrl.add);
 user.put(
   "/:id",
   userMiddle.checkAuth,

@@ -16,10 +16,10 @@ exports.list = async ctx => {
 exports.info = async ctx => {
   const { id } = ctx.params;
   const { _id, email } = ctx.user;
-  let group = ctx.middle.group;
+  let category = ctx.middle.category;
 
   ctx.body = {
-    group
+    category
   };
 };
 
@@ -57,7 +57,7 @@ exports.add = async ctx => {
   });
 
   console.log(`filterType : `, filterType);
-  if (!filterType) {
+  if (!filterType.length) {
     ctx.status = 400;
     return (ctx.body = {
       error: {
@@ -160,38 +160,67 @@ exports.add = async ctx => {
 exports.modify = async ctx => {
   const { _id, name, nickname, email } = ctx.user;
   const { id } = ctx.params;
-  const { title, members, private = null } = ctx.request.body;
-  const targetGroup = ctx.middle.group;
-  console.log(ctx.middle.group);
+  const {
+    key,
+    category,
+    type,
+    read,
+    write,
+    sequence,
+    private = null
+  } = ctx.request.body;
+  const targetCategory = ctx.middle.category;
+  console.log(ctx.middle.category);
   let data = {};
-  if (name !== targetGroup.owner.name) {
+  if (name !== targetCategory.owner.name) {
     data.owner.name = name;
   }
-  if (nickname !== targetGroup.owner.nickname) {
+  if (nickname !== targetCategory.owner.nickname) {
     data.owner.name = name;
   }
-  if (title) data.title = title;
-  if (members) data.members = members;
-  console.log(private, typeof private);
+
+  let filterType = categoryForm.type.enum.filter(form => {
+    return form === type;
+  });
+  if (!filterType.length) {
+    ctx.status = 400;
+    return (ctx.body = {
+      error: {
+        enum: categoryForm.type.enum,
+        message: `type 값을 enum 형식에 맞춰주세요.`
+      }
+    });
+  }
+
+  if (key) data.key = key;
+  if (category) data.category = category;
+  if (type) data.type = type;
+  if (read) data.read = read;
+  if (write) data.write = write;
+  if (sequence) data.sequence = sequence;
   if (typeof private === "boolean") data.private = private;
+
   data.modifyDate = new Date();
 
-  const group = await Group.findByIdAndUpdate(
-    id,
-    { $set: data },
-    { new: true }
-  ).exec();
-
-  ctx.body = {
-    group
-  };
+  try {
+    const modifyCategory = await Category.findByIdAndUpdate(
+      id,
+      { $set: data },
+      { new: true }
+    ).exec();
+    ctx.body = {
+      category: modifyCategory
+    };
+  } catch (e) {
+    ctx.throw(e);
+  }
 };
 
 exports.del = async ctx => {
   const { _id, email } = ctx.user;
   const { id } = ctx.params;
 
-  await Group.findByIdAndRemove(id).exec();
+  await Category.findByIdAndRemove(id).exec();
   ctx.body = {
     message: `삭제 요청이 완료되었습니다.`
   };

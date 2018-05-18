@@ -31,7 +31,8 @@ const createSession = (ctx, data) => {
   return sess;
 };
 
-exports.join = async ctx => {
+exports.add = async ctx => {
+  console.log(`add`);
   const {
     name,
     email,
