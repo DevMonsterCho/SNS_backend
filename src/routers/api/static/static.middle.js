@@ -1,20 +1,20 @@
-const Category = require("models/category");
+const Static = require("models/static");
 const User = require("models/user");
 const { ObjectId } = require("mongoose").Types;
 
-exports.checkCategory = async (ctx, next) => {
+exports.checkStatic = async (ctx, next) => {
   const { id } = ctx.params;
-  const category = await Category.findById(id).exec();
-  if (!category) {
+  const static = await Static.findById(id).exec();
+  if (!static) {
     ctx.status = 400;
     return (ctx.body = {
       error: {
-        message: `요청하신 카테고리는 존재하지 않습니다.`
+        message: `요청하신 그룹은 존재하지 않습니다.`
       }
     });
   }
 
-  if (category.owner._id != ctx.user._id) {
+  if (static.owner._id != ctx.user._id) {
     ctx.status = 401;
     return (ctx.body = {
       error: {
@@ -22,7 +22,7 @@ exports.checkCategory = async (ctx, next) => {
       }
     });
   }
-  ctx.middle.category = category;
+  ctx.middle.static = static;
 
   return await next();
 };

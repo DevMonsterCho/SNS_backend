@@ -11,11 +11,6 @@ const Friends = new Schema({
     type: String,
     required: true
   },
-  nickname: {
-    type: String,
-    trim: true,
-    required: true
-  },
   email: {
     type: String,
     lowercase: true,

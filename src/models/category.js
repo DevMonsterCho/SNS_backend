@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const categoryForm = require("./category.form");
+const categoryForm = require("format/category.form");
 
 const { Schema } = mongoose;
 
@@ -10,11 +10,6 @@ const Owner = new Schema({
   },
   name: {
     type: String,
-    required: true
-  },
-  nickname: {
-    type: String,
-    trim: true,
     required: true
   },
   email: {
@@ -28,10 +23,6 @@ const Owner = new Schema({
 const Group = new Schema({
   _id: {
     type: Schema.Types.ObjectId,
-    required: true
-  },
-  title: {
-    type: String,
     required: true
   }
 });
@@ -55,6 +46,9 @@ const Category = new Schema({
     type: String,
     enum: categoryForm.type.enum,
     required: true
+  },
+  static: {
+    type: Schema.Types.ObjectId
   },
   read: Group,
   write: Group,

@@ -4,6 +4,7 @@ const crypto = require("crypto");
 
 exports.checkObjectId = (ctx, next) => {
   const { id } = ctx.params;
+  console.log(`id : `, id);
   if (!ObjectId.isValid(id)) {
     ctx.status = 400;
     return (ctx.body = {

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const staticForm = require("format/static.form");
 
 const { Schema } = mongoose;
 
@@ -19,7 +20,21 @@ const Owner = new Schema({
   }
 });
 
-const Member = new Schema({
+const Group = new Schema({
+  _id: {
+    type: Schema.Types.ObjectId,
+    required: true
+  }
+});
+
+const Category = new Schema({
+  _id: {
+    type: Schema.Types.ObjectId,
+    required: true
+  }
+});
+
+const File = new Schema({
   _id: {
     type: Schema.Types.ObjectId,
     required: true
@@ -28,22 +43,38 @@ const Member = new Schema({
     type: String,
     required: true
   },
-  email: {
+  path: {
     type: String,
-    lowercase: true,
-    trim: true,
     required: true
   }
 });
 
-const Group = new Schema({
+const Static = new Schema({
   owner: Owner,
-  title: {
+  category: Category,
+  type: {
     type: String,
-    trim: true,
+    enum: staticForm.type.enum,
     required: true
   },
-  members: [Member],
+  title: {
+    type: String,
+    required: true
+  },
+  subTitle: {
+    type: String,
+    default: ""
+  },
+  content: {
+    type: String,
+    required: true
+  },
+  footer: {
+    type: String,
+    default: ""
+  },
+  files: [File],
+  tags: [String],
   private: {
     type: Boolean,
     default: false
@@ -58,4 +89,4 @@ const Group = new Schema({
   }
 });
 
-module.exports = mongoose.model("Group", Group);
+module.exports = mongoose.model("Static", Static);

@@ -1,4 +1,8 @@
 const User = require("models/user");
+const Group = require("models/group");
+const Category = require("models/category");
+const Static = require("models/static");
+const Board = require("models/board");
 const { ObjectId } = require("mongoose").Types;
 const crypto = require("crypto");
 
@@ -42,19 +46,85 @@ exports.add = async ctx => {
     message = null
   } = ctx.request.body;
 
-  let passkey = cryptoPbkdf2Sync(password);
+  let passkey = cryptoPbkdf2Sync(password.replace(/\s/gi, ""));
 
-  const user = new User({
-    name,
-    email,
-    grade,
-    nickname,
-    message,
-    password: passkey
-  });
   try {
-    console.log(user);
+    let owner = {
+      name: name.replace(/\s/gi, "").toLowerCase(),
+      email: email.replace(/\s/gi, "").toLowerCase()
+    };
+    let userData = {
+      name: owner.name,
+      email: owner.email,
+      grade,
+      nickname: nickname.replace(/\s/gi, "").toLowerCase(),
+      message,
+      password: passkey
+    };
+    const user = await new User(userData);
+    owner._id = user._id;
+    console.log(`user : `, user);
     await user.save();
+
+    let groupData = {
+      owner: owner,
+      title: `${user.name}'s default group`,
+      members: [owner]
+    };
+    console.log(groupData);
+    const group = await new Group(groupData);
+    console.log(`group : `, group);
+    await group.save();
+
+    let categoryData = {
+      owner: owner,
+      key: `static`,
+      category: `static`,
+      type: `static`,
+      read: { _id: group._id },
+      write: { _id: group._id }
+    };
+    console.log(`categoryData : `, categoryData);
+    let categoryStatic = await new Category(categoryData);
+    console.log(`categoryStatic : `, categoryStatic);
+    await categoryStatic.save();
+
+    categoryData.key = "board";
+    categoryData.category = "board";
+    categoryData.type = "board";
+    console.log(`categoryData : `, categoryData);
+    let categoryBoard = await new Category(categoryData);
+    console.log(`categoryBoard : `, categoryBoard);
+    await categoryBoard.save();
+
+    let categoryType = categoryStatic.type;
+    let staticData = {
+      owner: owner,
+      category: {
+        _id: categoryStatic._id
+      },
+      type: "text",
+      title: `${owner.name}'s ${categoryStatic.type} world`,
+      subTitle: `welcome`,
+      content: `welcome to ${owner.name}'s ${categoryStatic.category} world`,
+      footer: `this is footer`
+    };
+    const static = await new Static(staticData);
+    console.log(`static : `, static);
+    await static.save();
+    categoryStatic.static = static._id;
+    await categoryStatic.save();
+
+    staticData.category._id = categoryBoard._id;
+    staticData.type = "text";
+    staticData.title = `${owner.name}'s ${categoryBoard.type} world`;
+    staticData.content = `welcome to ${owner.name}'s ${
+      categoryBoard.category
+    } world`;
+    const board = await new Board(staticData);
+    console.log(`board : `, board);
+    await board.save();
+
     let data = {
       _id: user._id,
       email: user.email,
@@ -64,12 +134,24 @@ exports.add = async ctx => {
       grade: user.grade,
       friends: user.friends
     };
+
     let sess = createSession(ctx, data);
     ctx.cookies.set("x-access-session", sess);
     delete data._id;
     return (ctx.body = {
       sess,
-      user: data
+      user: data,
+      default: {
+        group,
+        category: {
+          static: categoryStatic,
+          board: categoryBoard
+        },
+        bbs: {
+          static,
+          board
+        }
+      }
     });
   } catch (e) {
     ctx.status = 500;
@@ -127,7 +209,6 @@ exports.login = async ctx => {
 
 exports.modify = async ctx => {
   const {
-    name,
     email,
     password,
     newpassword = null,
@@ -179,10 +260,7 @@ exports.modify = async ctx => {
 
   if (newpassword) passkey = cryptoPbkdf2Sync(newpassword);
 
-  console.log(`wwwwwww`);
-  console.log(findUserForId);
   let data = {};
-  if (findUserForId.name !== name) data.name = name;
   if (findUserForId.grade !== grade && ctx.user.grade === 999)
     data.grade = grade;
   if (findUserForId.nickname !== nickname) data.nickname = nickname;
@@ -284,22 +362,36 @@ exports.list = async ctx => {
 
 exports.remove = async ctx => {
   const { id } = ctx.params;
+  if (ctx.user.grade !== 999) {
+    ctx.status = 401;
+    return (ctx.body = {
+      error: {
+        message: `관리자에게 문의 바랍니다.`
+      }
+    });
+  }
 
   try {
     let findUser = await User.findById(id).exec();
-    console.log(ctx.user);
     console.log(findUser);
-    if (findUser.email === ctx.user.email) {
-      await User.findByIdAndRemove(id).exec();
-      ctx.body = {
-        message: "삭제 처리가 완료 되었습니다."
-      };
-    } else {
-      ctx.status = 401;
-      ctx.body = {
-        error: { message: "권한이 없습니다." }
-      };
+    if (!findUser) {
+      ctx.status = 400;
+      return (ctx.body = {
+        error: {
+          message: `존재하지 않는 유저입니다.`
+        }
+      });
     }
+
+    await Board.remove({ "owner._id": findUser._id }).exec();
+    await Static.remove({ "owner._id": findUser._id }).exec();
+    await Category.remove({ "owner._id": findUser._id }).exec();
+    await Group.remove({ "owner._id": findUser._id }).exec();
+    await findUser.remove();
+
+    ctx.body = {
+      message: "삭제 처리가 완료 되었습니다."
+    };
   } catch (e) {
     ctx.throw(e, 500);
   }

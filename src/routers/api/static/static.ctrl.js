@@ -1,66 +1,9 @@
+const Static = require("models/static");
 const Board = require("models/board");
 const Category = require("models/category");
-const boardForm = require("format/board.form");
+const staticForm = require("format/static.form");
 const User = require("models/user");
 const { ObjectId } = require("mongoose").Types;
-
-exports.listNickname = async ctx => {
-  const { nickname } = ctx.params;
-  const user = await User.findOne({ nickname }).exec();
-  console.log(user);
-  if (!user) {
-    ctx.status = 400;
-    return (ctx.body = {
-      error: {
-        message: `존재하지 않는 유저입니다.`
-      }
-    });
-  }
-
-  let query = { "owner._id": user._id };
-  console.log(user._id);
-  console.log(ctx.user._id);
-  console.log(user._id != ctx.user._id);
-  if (user._id != ctx.user._id) {
-    query.private = false;
-  }
-  let boards = await Board.find(query).exec();
-  console.log(boards);
-
-  return (ctx.body = {
-    boards: boards
-  });
-};
-
-exports.listCategory = async ctx => {
-  const { category } = ctx.params;
-  const findCategory = await Category.findById(category).exec();
-  console.log(findCategory);
-  let query = { "category._id": findCategory._id };
-  console.log(findCategory._id);
-  console.log(ctx.user._id);
-  console.log(findCategory.owner._id != ctx.user._id);
-  if (findCategory.owner._id != ctx.user._id) {
-    query.private = false;
-  }
-  let boards = await Board.find(query).exec();
-  console.log(boards);
-
-  return (ctx.body = {
-    boards: boards
-  });
-};
-
-exports.info = async ctx => {
-  const { id } = ctx.params;
-  const { _id, email } = ctx.user;
-
-  let board = await Board.findById(id).exec();
-
-  ctx.body = {
-    board
-  };
-};
 
 const checkObjectId = id => {
   if (!ObjectId.isValid(id)) {
@@ -80,7 +23,8 @@ exports.add = async ctx => {
     footer,
     files,
     tags,
-    private = false
+    private = false,
+    select = true
   } = ctx.request.body;
 
   if (!category) {
@@ -110,8 +54,8 @@ exports.add = async ctx => {
     };
   }
 
-  console.log(`boardForm.type.enum : `, boardForm.type.enum);
-  let filterType = boardForm.type.enum.filter(form => {
+  console.log(`staticForm.type.enum : `, staticForm.type.enum);
+  let filterType = staticForm.type.enum.filter(form => {
     return form === type;
   });
   console.log(`filterType : `, filterType);
@@ -119,7 +63,7 @@ exports.add = async ctx => {
     ctx.status = 400;
     return (ctx.body = {
       error: {
-        enum: categoryForm.type.enum,
+        enum: staticForm.type.enum,
         message: `type 값을 enum 형식에 맞춰주세요.`
       }
     });
@@ -130,6 +74,26 @@ exports.add = async ctx => {
     ctx.body = {
       error: {
         message: `content 값이 없습니다.`
+      }
+    };
+  }
+
+  const categoryItem = await Category.findById(category._id).exec();
+  console.log(`categoryItem : `, categoryItem);
+  if (!categoryItem) {
+    ctx.status = 400;
+    ctx.body = {
+      error: {
+        message: `카테고리가 존재하지 않습니다.`
+      }
+    };
+  }
+
+  if (categoryItem.type !== "static") {
+    ctx.status = 400;
+    ctx.body = {
+      error: {
+        message: `선택하신 카테고리는 static 카테고리가 아닙니다.`
       }
     };
   }
@@ -165,11 +129,14 @@ exports.add = async ctx => {
   if (typeof private === "boolean") baseData.private = private;
   console.log(baseData);
 
-  const board = await new Board(baseData);
+  const static = await new Static(baseData);
+
   try {
-    await board.save();
+    await static.save();
+    categoryItem.static = static._id;
+    await categoryItem.save();
     return (ctx.body = {
-      board
+      static
     });
   } catch (e) {
     ctx.throw(e);
@@ -191,29 +158,43 @@ exports.modify = async ctx => {
     private = false
   } = ctx.request.body;
 
-  const targetBoard = ctx.middle.board;
-  console.log(targetBoard);
+  const targetStatic = ctx.middle.static;
+  console.log(targetStatic);
   let data = {};
-  if (name !== targetBoard.owner.name) {
-    data.owner.name = name;
-  }
-  if (nickname !== targetBoard.owner.nickname) {
-    data.owner.name = name;
-  }
 
-  let filterType = boardForm.type.enum.filter(form => {
+  let filterType = staticForm.type.enum.filter(form => {
     return form === type;
   });
   if (!filterType.length) {
     ctx.status = 400;
     return (ctx.body = {
       error: {
-        enum: boardForm.type.enum,
+        enum: staticForm.type.enum,
         message: `type 값을 enum 형식에 맞춰주세요.`
       }
     });
   }
 
+  const categoryItem = await Category.findById(category._id).exec();
+  if (!categoryItem) {
+    ctx.status = 400;
+    ctx.body = {
+      error: {
+        message: `카테고리가 존재하지 않습니다.`
+      }
+    };
+  }
+
+  if (categoryItem.type !== "static") {
+    ctx.status = 400;
+    ctx.body = {
+      error: {
+        message: `선택하신 카테고리는 static 카테고리가 아닙니다.`
+      }
+    };
+  }
+
+  data.owner = { _id: targetStatic.owner._id };
   if (category) data.category = category;
   if (title) data.title = title;
   if (subTitle) data.subTitle = subTitle;
@@ -235,21 +216,32 @@ exports.modify = async ctx => {
 
   if (typeof private === "boolean") data.private = private;
 
-  data.modifyDate = new Date();
+  data.createDate = targetStatic.createDate;
+
+  const static = await new Static(data);
 
   try {
-    const board = await Board.findByIdAndUpdate(
-      id,
-      { $set: data },
-      { new: true }
-    ).exec();
+    await static.save();
+    categoryItem.static = static._id;
+    await categoryItem.save();
 
     return (ctx.body = {
-      board
+      static
     });
   } catch (e) {
     ctx.throw(e);
   }
+};
+
+exports.info = async ctx => {
+  const { id } = ctx.params;
+  const { _id, email } = ctx.user;
+
+  let static = await Static.findById(id).exec();
+
+  ctx.body = {
+    static
+  };
 };
 
 exports.del = async ctx => {
@@ -261,4 +253,55 @@ exports.del = async ctx => {
   ctx.body = {
     message: `삭제 요청이 완료되었습니다.`
   };
+};
+
+exports.listCategory = async ctx => {
+  const { category } = ctx.params;
+  const findCategory = await Category.findById(category).exec();
+  console.log(findCategory);
+  if (!findCategory) {
+    ctx.status = 400;
+    ctx.body = {
+      error: {
+        message: `존재하지 않는 카테고리 입니다.`
+      }
+    };
+  }
+  let query = { "category._id": findCategory._id };
+  console.log(findCategory._id);
+  console.log(ctx.user._id);
+  console.log(findCategory.owner._id != ctx.user._id);
+  if (findCategory.owner._id != ctx.user._id) {
+    query.private = false;
+  }
+  let statics = await Static.find(query).exec();
+  console.log(statics);
+
+  return (ctx.body = {
+    statics: statics
+  });
+};
+
+exports.listNickname = async ctx => {
+  const { nickname } = ctx.params;
+  const user = await User.findOne({ nickname }).exec();
+  console.log(user);
+  let query = { "owner._id": user._id };
+  console.log(user._id);
+  console.log(ctx.user._id);
+  console.log(user._id != ctx.user._id);
+  if (user._id != ctx.user._id) {
+    query.private = false;
+  }
+  let statics = await Static.find(query).exec();
+  console.log(statics);
+
+  let staticCategoryList = [];
+  statics.forEach(item => {
+    staticCategoryList.push(item);
+  });
+
+  return (ctx.body = {
+    statics
+  });
 };

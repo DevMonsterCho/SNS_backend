@@ -1,11 +1,21 @@
 const mongoose = require("mongoose");
-const boardForm = require("./board.form");
+const boardForm = require("format/board.form");
 
 const { Schema } = mongoose;
 
 const Owner = new Schema({
   _id: {
     type: Schema.Types.ObjectId,
+    required: true
+  },
+  name: {
+    type: String,
+    required: true
+  },
+  email: {
+    type: String,
+    lowercase: true,
+    trim: true,
     required: true
   }
 });

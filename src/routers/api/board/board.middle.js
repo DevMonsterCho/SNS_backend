@@ -2,14 +2,14 @@ const Board = require("models/board");
 const User = require("models/user");
 const { ObjectId } = require("mongoose").Types;
 
-exports.checkCategory = async (ctx, next) => {
+exports.checkBoard = async (ctx, next) => {
   const { id } = ctx.params;
   const board = await Board.findById(id).exec();
   if (!board) {
     ctx.status = 400;
     return (ctx.body = {
       error: {
-        message: `요청하신 그룹은 존재하지 않습니다.`
+        message: `요청하신 게시글은 존재하지 않습니다.`
       }
     });
   }

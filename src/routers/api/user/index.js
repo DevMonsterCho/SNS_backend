@@ -20,17 +20,17 @@ user.put(
   userMiddle.checkObjectId,
   userCtrl.modify
 );
+
+user.delete(
+  "/friend",
+  userMiddle.checkAuth,
+  userFriendCtrl.deleteFriendForEmail
+);
 user.delete(
   "/:id",
   userMiddle.checkAuth,
   userMiddle.checkObjectId,
   userCtrl.remove
-);
-user.delete(
-  "/friend/:id",
-  userMiddle.checkAuth,
-  userMiddle.checkObjectId,
-  userFriendCtrl.deleteFriendForEmail
 );
 
 module.exports = user;

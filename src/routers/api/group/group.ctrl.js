@@ -1,4 +1,5 @@
 const Group = require("models/group");
+const Category = require("models/category");
 const User = require("models/user");
 const { ObjectId } = require("mongoose").Types;
 
@@ -28,7 +29,6 @@ exports.add = async ctx => {
       owner: {
         _id: ctx.user._id,
         name: ctx.user.name,
-        nickname: ctx.user.nickname,
         email: ctx.user.email
       },
       title
@@ -50,12 +50,11 @@ exports.modify = async ctx => {
   const targetGroup = ctx.middle.group;
   console.log(ctx.middle.group);
   let data = {};
+
   if (name !== targetGroup.owner.name) {
     data.owner.name = name;
   }
-  if (nickname !== targetGroup.owner.nickname) {
-    data.owner.name = name;
-  }
+
   if (title) data.title = title;
   if (members) data.members = members;
   console.log(private, typeof private);
@@ -74,12 +73,29 @@ exports.modify = async ctx => {
 };
 
 exports.del = async ctx => {
+  console.log(`del`);
   const { _id, email } = ctx.user;
   const { id } = ctx.params;
 
+  const targetGroup = ctx.middle.group;
+  console.log(targetGroup);
+  const categories = await Category.find()
+    .or([{ "read._id": targetGroup._id }, { "write._id": targetGroup._id }])
+    .exec();
+  console.log(categories);
+  if (categories.length) {
+    ctx.status = 400;
+    return (ctx.body = {
+      error: {
+        categories: categories,
+        message: `연동된 카테고리를 삭제 후 이용해주세요.`
+      }
+    });
+  }
+
   await Group.findByIdAndRemove(id).exec();
   ctx.body = {
-    message: `삭제 요청이 완료되었습니다.`
+    message: `삭제 요청이 완료되었습니다`
   };
 };
 
@@ -102,8 +118,7 @@ exports.addMember = async ctx => {
   let memberData = {
     _id: targetUser._id,
     name: targetUser.name,
-    email: targetUser.email,
-    nickname: targetUser.nickname
+    email: targetUser.email
   };
   group.members.push(memberData);
   try {

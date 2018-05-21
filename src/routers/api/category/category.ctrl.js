@@ -1,5 +1,7 @@
+const Board = require("models/board");
+const Static = require("models/static");
 const Category = require("models/category");
-const categoryForm = require("models/category.form");
+const categoryForm = require("format/category.form");
 const Group = require("models/group");
 const User = require("models/user");
 const { ObjectId } = require("mongoose").Types;
@@ -87,8 +89,7 @@ exports.add = async ctx => {
     });
   }
   let reader = {
-    _id: findReader._id,
-    title: findReader.title
+    _id: findReader._id
   };
 
   if (!checkObjectId(write)) {
@@ -109,8 +110,7 @@ exports.add = async ctx => {
     });
   }
   let writer = {
-    _id: findWriter._id,
-    title: findWriter.title
+    _id: findWriter._id
   };
 
   console.log("reader : ", reader);
@@ -133,7 +133,6 @@ exports.add = async ctx => {
     owner: {
       _id: ctx.user._id,
       name: ctx.user.name,
-      nickname: ctx.user.nickname,
       email: ctx.user.email
     },
     key: baseKey,
@@ -172,16 +171,15 @@ exports.modify = async ctx => {
   const targetCategory = ctx.middle.category;
   console.log(ctx.middle.category);
   let data = {};
-  if (name !== targetCategory.owner.name) {
-    data.owner.name = name;
-  }
-  if (nickname !== targetCategory.owner.nickname) {
-    data.owner.name = name;
-  }
 
   let filterType = categoryForm.type.enum.filter(form => {
     return form === type;
   });
+
+  if (name !== targetCategory.owner.name) {
+    data.owner.name = name;
+  }
+
   if (!filterType.length) {
     ctx.status = 400;
     return (ctx.body = {
@@ -220,8 +218,17 @@ exports.del = async ctx => {
   const { _id, email } = ctx.user;
   const { id } = ctx.params;
 
-  await Category.findByIdAndRemove(id).exec();
+  let targetCategory = ctx.middle.category;
+  let static = await Static.remove({ "category._id": targetCategory._id });
+  let board = await Board.remove({ "category._id": targetCategory._id });
+  let result = {
+    static,
+    board
+  };
+
+  const deleteCategory = await Category.findByIdAndRemove(id);
   ctx.body = {
+    result,
     message: `삭제 요청이 완료되었습니다.`
   };
 };
