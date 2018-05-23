@@ -48,19 +48,22 @@ exports.add = async ctx => {
 
   let passkey = cryptoPbkdf2Sync(password.replace(/\s/gi, ""));
 
+  const findOneMoreUser = await User.findOne().exec();
+
   try {
     let owner = {
-      name: name.replace(/\s/gi, "").toLowerCase(),
+      name: name.replace(/\s/gi, ""),
       email: email.replace(/\s/gi, "").toLowerCase()
     };
     let userData = {
       name: owner.name,
       email: owner.email,
-      grade,
       nickname: nickname.replace(/\s/gi, "").toLowerCase(),
       message,
       password: passkey
     };
+    if (findOneMoreUser === null) userData.grade = 999;
+
     const user = await new User(userData);
     owner._id = user._id;
     console.log(`user : `, user);
